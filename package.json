@@ -17,6 +17,7 @@
     "express": "^4.13.4",
     "js-yaml": "^3.5.2",
     "q": "^1.4.1",
+    "websocket": "^1.0.22",
     "winston": "^2.1.1",
     "winston-request-logger": "^1.0.7"
   }
