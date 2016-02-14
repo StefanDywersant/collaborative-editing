@@ -1,5 +1,3 @@
-'use strict';
-
 var http = require('http'),
 	q = require('q'),
 	express = require('express'),
@@ -36,7 +34,7 @@ var _instance;
 /**
  * Initializes webserver instance.
  *
- * @returns {Promise.Boolean}
+ * @returns {Promise.bool}
  */
 var init = function() {
 	_instance.listen(config.webserver.port, config.webserver.host);
@@ -48,7 +46,7 @@ var init = function() {
 /**
  * Returns configured webserver instance
  *
- * @returns {Object}
+ * @returns {object}
  */
 var instance = () => _instance;
 

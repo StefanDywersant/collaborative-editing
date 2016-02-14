@@ -1,8 +1,8 @@
 /**
  * Service responsible for estimating current clock state on backend
  *
- * @param {{on: function(string, function(object)), emit: function(string, function(object))}} wss WebSocket service instance
- * @returns {{ts: Promise.number}}
+ * @param {{on: function(string, function(object)), emit: function(string, object)}} wss WebSocket service instance
+ * @returns {{ts: function():Promise.number}}
  */
 window.driftService = function(wss) {
 
@@ -47,6 +47,9 @@ window.driftService = function(wss) {
 	 * @type {object}
 	 */
 	var deferred = jQuery.Deferred();
+
+
+	var enabled = false;
 
 
 	/**
@@ -113,9 +116,12 @@ window.driftService = function(wss) {
 	 * Emits timestamp query to backend.
 	 */
 	var emit = function() {
+		if (!enabled)
+			return;
+
 		var id = genID();
 
-		wss.emit('ts', {id: id}, true);
+		wss.emit('ts', {id: id});
 
 		unconfirmed[id] = Date.now();
 	};
@@ -126,8 +132,22 @@ window.driftService = function(wss) {
 	 */
 	var init = function() {
 		setInterval(gc, GC_INTERVAL);
+
 		setInterval(emit, EMIT_INTERVAL);
-		wss.on('ts', update);
+
+		wss.on('message', function(type, message) {
+			if (type == 'ts') {
+				update(message);
+			}
+		});
+
+		wss.on('close', function() {
+			enabled = false
+		});
+
+		wss.on('open', function() {
+			enabled = true
+		});
 	};
 
 

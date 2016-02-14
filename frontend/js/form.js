@@ -1,7 +1,7 @@
 /**
  * Service responsible for controlling forms and inputs.
  *
- * @param {{on: function(string, function(object)), emit: function(string, function(object))}} wss WebSocket service instance
+ * @param {{on: function(string, function(object)), emit: function(string, object)}} wss WebSocket service instance
  * @param {{ts: function}} ds Clock drift service instance
  */
 window.formService = function(wss, ds) {
@@ -86,9 +86,14 @@ window.formService = function(wss, ds) {
 	/**
 	 * Handle incoming state update from backend.
 	 *
+	 * @param {string} type Received message type
 	 * @param {object} message Received message object
 	 */
-	var receive = function(message) {
+	var messageEH = function(type, message) {
+		// ignore other messages
+		if (type != 'state')
+			return;
+
 		// fill in lastTS
 		if (!(message.form in lastTS)) {
 			lastTS[message.form] = 0;
@@ -109,6 +114,25 @@ window.formService = function(wss, ds) {
 
 
 	/**
+	 * Handles WebSocket connection opened event.
+	 */
+	var openEH = function() {
+		// notify backend abount state of all local forms
+		var _forms = forms();
+
+		for (var i = 0; i < _forms.length; i++) {
+			var form = _forms[i];
+
+			wss.emit('state', {
+				form: form,
+				state: state(form),
+				ts: form in lastTS ? lastTS[form] : 0
+			});
+		}
+	};
+
+
+	/**
 	 * Initialize form service
 	 */
 	var init = function() {
@@ -122,22 +146,9 @@ window.formService = function(wss, ds) {
 		})();
 
 		// listen to 'state' messages
-		wss.on('state', receive);
+		wss.on('message', messageEH);
 
-		// emit initial state
-		(function() {
-			var _forms = forms();
-
-			for (var i = 0; i < _forms.length; i++) {
-				var form = _forms[i];
-
-				wss.emit('state', {
-					form: form,
-					state: state(form),
-					ts: 0
-				});
-			}
-		})();
+		wss.on('open', openEH)
 	};
 
 

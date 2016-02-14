@@ -2,6 +2,12 @@ window.websocketService = function() {
 
 
 	/**
+	 * Envelope enclosing message and it's type
+	 * @typedef {{type: string, message: object}} Envelope
+	 */
+
+
+	/**
 	 * WebSocket readyState open constant
 	 * @type {number}
 	 */
@@ -17,9 +23,9 @@ window.websocketService = function() {
 
 	/**
 	 * Registered message handlers
-	 * @type {Object}
+	 * @type {{open: function[], close: function[], message: function(string, object)[]}}
 	 */
-	var handlers = {};
+	var handlers = {open: [], close: [], message: []};
 
 
 	/**
@@ -31,7 +37,7 @@ window.websocketService = function() {
 
 	/**
 	 * Envelope queue
-	 * @type {Object[]}
+	 * @type {Envelope[]}
 	 */
 	var queue = [];
 
@@ -41,9 +47,9 @@ window.websocketService = function() {
 	 */
 	var connect = function () {
 		socket = new WebSocket('ws://' + location.hostname + ':' + location.port + '/socket', 'endpoint');
-		socket.onmessage = messageHandler;
-		socket.onopen = openHandler;
-		socket.onclose = closeHandler;
+		socket.onmessage = messageEH;
+		socket.onopen = openEH;
+		socket.onclose = closeEH;
 
 		logger.log('[websocketService:connect] Connecting to backend...');
 	};
@@ -52,8 +58,12 @@ window.websocketService = function() {
 	/**
 	 * WebSocket open handler
 	 */
-	var openHandler = function() {
-		logger.log('[websocketService:openHandler] Connected to backend');
+	var openEH = function() {
+		logger.log('[websocketService:openEH] Connected to backend');
+
+		for (var i = 0; i < handlers.open.length; i++)
+			handlers.open[i]();
+
 		run();
 	};
 
@@ -61,12 +71,15 @@ window.websocketService = function() {
 	/**
 	 * WebSocket close handler
 	 */
-	var closeHandler = function() {
-		logger.log('[websocketService:closeHandler] Socket closed');
+	var closeEH = function() {
+		logger.log('[websocketService:closeEH] Socket closed');
 
 		socket.onmessage = undefined;
 		socket.onopen = undefined;
 		socket.onclose = undefined;
+
+		for (var i = 0; i < handlers.close.length; i++)
+			handlers.close[i]();
 
 		setTimeout(connect, RECONNECT_TIMEOUT);
 	};
@@ -74,31 +87,31 @@ window.websocketService = function() {
 
 	/**
 	 * WebSocket message handler
+	 *
+	 * @param {{data: string}} event WebSocket message event
 	 */
-	var messageHandler = function(event) {
+	var messageEH = function(event) {
 		var envelope = JSON.parse(event.data);
 
 		logger.log('[websocketService:messageHandler] Received envelope', envelope);
 
-		if (envelope.type in handlers) {
-			handlers[envelope.type].forEach(function (handler) {
-				handler(envelope.message);
-			});
-		}
+		for (var i = 0; i < handlers.message.length; i++)
+			handlers.message[i](envelope.type, envelope.message);
 	};
 
 
 	/**
-	 * Register handler for message of given type.
+	 * Register handler for events of given type.
+	 * Supported event types: open, close, message
 	 *
-	 * @param {string} type Message type
-	 * @param {function(object)} handler Handler function which accepts message as first argument
+	 * @param {string} type Event type
+	 * @param {function} handler Event handler function
 	 */
 	var on = function(type, handler) {
 		if (type in handlers) {
 			handlers[type].push(handler);
 		} else {
-			handlers[type] = [handler];
+			throw new Error('Unknown event type: ' + type);
 		}
 	};
 
@@ -163,13 +176,11 @@ window.websocketService = function() {
 	};
 
 
-	connect();
-
-
 	// public interface
 	return {
 		on: on,
-		emit: emit
+		emit: emit,
+		connect: connect
 	};
 
 
