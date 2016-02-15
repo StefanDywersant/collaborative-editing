@@ -1,24 +1,23 @@
-window.websocketService = function() {
+var W3CWebSocket = require('websocket').w3cwebsocket,
+	logger = require('../service/logger'),
+	q = require('q'),
+	config = require('config');
 
 
-	/**
-	 * Envelope enclosing message and it's type
-	 * @typedef {{type: string, message: object}} Envelope
-	 */
+/**
+ * Envelope enclosing message and it's type
+ * @typedef {{type: string, message: object}} Envelope
+ */
 
 
-	/**
-	 * WebSocket readyState open constant
-	 * @type {number}
-	 */
-	var WS_RS_OPEN = 1;
+/**
+ * WebSocket readyState open constant
+ * @type {number}
+ */
+const WS_RS_OPEN = 1;
 
 
-	/**
-	 * How long to wait before reconnecting socket (in ms)
-	 * @type {number}
-	 */
-	var RECONNECT_TIMEOUT = 1000;
+module.exports = function(host, port) {
 
 
 	/**
@@ -30,7 +29,7 @@ window.websocketService = function() {
 
 	/**
 	 * WebSocket instance
-	 * @type {WebSocket}
+	 * @type {W3CWebSocket}
 	 */
 	var socket;
 
@@ -43,23 +42,47 @@ window.websocketService = function() {
 
 
 	/**
+	 * Client connection instance.
+	 * @type {ClientConnection}
+	 */
+	var connection;
+
+
+	/**
+	 * JS magic
+	 * @type {module}
+	 */
+	var self = this;
+
+
+	/**
 	 * Initiates connection to backend over WebSocket.
 	 */
 	var connect = function () {
-		socket = new WebSocket('ws://' + location.hostname + ':' + location.port + '/socket', 'endpoint');
+		var address = 'ws://' + host + ':' + port + '/socket';
+
+		socket = new W3CWebSocket(address, 'endpoint');
 		socket.onmessage = messageEH;
 		socket.onopen = openEH;
 		socket.onclose = closeEH;
 
-		logger.log('[websocketService:connect] Connecting to backend...');
+		var id = `backend,${host}:${port}`;
+
+		connection = {
+			id: id,
+			emit: self.emit,
+			on: self.on
+		};
+
+		logger.info('[websocketService:connect][%s] Connecting to %s', id, address);
 	};
 
 
 	/**
 	 * WebSocket open handler
 	 */
-	var openEH = function() {
-		logger.log('[websocketService:openEH] Connected to backend');
+	var openEH = function () {
+		logger.info('[websocketService:openEH][%s] Connected to backend', connection.id);
 
 		for (var i = 0; i < handlers.open.length; i++)
 			handlers.open[i]();
@@ -71,8 +94,8 @@ window.websocketService = function() {
 	/**
 	 * WebSocket close handler
 	 */
-	var closeEH = function() {
-		logger.log('[websocketService:closeEH] Socket closed');
+	var closeEH = function () {
+		logger.info('[websocketService:closeEH][%s] Socket closed', connection.id);
 
 		socket.onmessage = undefined;
 		socket.onopen = undefined;
@@ -81,7 +104,7 @@ window.websocketService = function() {
 		for (var i = 0; i < handlers.close.length; i++)
 			handlers.close[i]();
 
-		setTimeout(connect, RECONNECT_TIMEOUT);
+		setTimeout(connect, config.websocket.client.reconnect_timeout);
 	};
 
 
@@ -90,10 +113,10 @@ window.websocketService = function() {
 	 *
 	 * @param {{data: string}} event WebSocket message event
 	 */
-	var messageEH = function(event) {
+	var messageEH = function (event) {
 		var envelope = JSON.parse(event.data);
 
-		logger.log('[websocketService:messageHandler] Received envelope', envelope);
+		logger.silly('[websocketService:messageHandler][%s] Received envelope: %s', connection.id, event.data);
 
 		for (var i = 0; i < handlers.message.length; i++)
 			handlers.message[i](envelope.type, envelope.message);
@@ -107,7 +130,7 @@ window.websocketService = function() {
 	 * @param {string} type Event type
 	 * @param {function} handler Event handler function
 	 */
-	var on = function(type, handler) {
+	this.on = function (type, handler) {
 		if (type in handlers) {
 			handlers[type].push(handler);
 		} else {
@@ -121,19 +144,21 @@ window.websocketService = function() {
 	 *
 	 * @param {{type: string, message: object}} envelope An envelope to be send
 	 */
-	var send = function(envelope) {
+	var send = function (envelope) {
 		if (socket.readyState != WS_RS_OPEN)
 			return;
 
-		socket.send(JSON.stringify(envelope));
-		logger.log('[websocketService:run] Sent envelope', envelope);
+		var data = JSON.stringify(envelope);
+
+		socket.send(data);
+		logger.silly('[websocketService:run][%s] Sent envelope: %s', connection.id, data);
 	};
 
 
 	/**
 	 * Processes one entry from send queue.
 	 */
-	var run = function() {
+	var run = function () {
 		var envelope;
 
 		if (queue.length == 0)
@@ -156,7 +181,7 @@ window.websocketService = function() {
 	 * @param {string} type Message type
 	 * @param {object} message Message contents
 	 */
-	var emit = function(type, message) {
+	this.emit = function(type, message) {
 		var envelope = {
 			type: type,
 			message: message
@@ -165,15 +190,21 @@ window.websocketService = function() {
 		queue.push(envelope);
 
 		run();
+
+		return q(true);
 	};
 
 
-	// public interface
-	return {
-		on: on,
-		emit: emit,
-		connect: connect
-	};
+	/**
+	 * Returns client connection instance.
+	 *
+	 * @returns {ClientConnection}
+	 */
+	this.connection = () => connection;
+
+
+	// initialization
+	connect();
 
 
 };

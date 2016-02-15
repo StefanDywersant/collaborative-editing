@@ -1,6 +1,7 @@
 var q = require('q'),
 	logger = require('../service/logger'),
-	formConnections = require('./connections');
+	formConnections = require('./connections'),
+	replConnections = require('../replication/connections');
 
 
 /**
@@ -29,6 +30,16 @@ var get = function(form) {
 
 
 /**
+ * Returns all form states.
+ *
+ * @returns {FormState[]}
+ */
+var all = function() {
+	return Object.keys(localFormStates).map((form) => localFormStates[form]);
+};
+
+
+/**
  * Sends state update to single connection.
  *
  * @param {ClientConnection} connection Client connection instance
@@ -44,17 +55,37 @@ var emitTo = function(connection, formState) {
 /**
  * Sends state update to all connections attached to form except one specified.
  *
- * @param {ClientConnection} connection Client connection
+ * @param {ClientConnection} connection Client connection instance
  * @param {FormState} formState Form state instance
  * @returns {Promise}
  */
 var emitToAllExcept = function(connection, formState) {
 	return q.all(
-		formConnections.get(formState.form)
+		formConnections
+			.get(formState.form)
+			.concat(replConnections.all())
 			.filter((c) => c !== connection)
 			.map(function(c) {
 				logger.debug('[handler.state:emitToAllExcept][%s] Sent state update (form=%s, state=%d)', c.id, formState.form, formState.state);
 				return c.emit(MESSAGE_TYPE, formState);
+			})
+	);
+};
+
+
+/**
+ * Sends form state to connected replicas.
+ *
+ * @param {FormState} formState Form state instance
+ * @returns {Promise}
+ */
+var emitToReplicas = function(formState) {
+	return q.all(
+		replConnections
+			.all()
+			.map((connection) => {
+				logger.debug('[handler.state:emitToReplicas][%s] Sent state update (form=%s, state=%d)', connection.id, formState.form, formState.state);
+				return connection.emit(MESSAGE_TYPE, formState)
 			})
 	);
 };
@@ -79,7 +110,8 @@ var update = function(formState, connection) {
 		};
 
 		// there is only one client connected and his state is the same as ours
-		// so we don't need to send a state message
+		// so we only need to update replica
+		emitToReplicas(formState);
 
 		logger.verbose('[form.states:update][%s] Added new form: %s (state=%d, ts=%d)', connection.id, formState.form, formState.state, formState.ts);
 
@@ -114,5 +146,6 @@ var update = function(formState, connection) {
 // public interface
 module.exports = {
 	update: update,
-	get: get
+	get: get,
+	all: all
 };
