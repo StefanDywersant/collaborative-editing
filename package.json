@@ -4,7 +4,7 @@
   "description": "Checkbox synchronization assignment from CKSource",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha tests"
   },
   "repository": {
     "type": "git",
@@ -20,5 +20,12 @@
     "websocket": "^1.0.22",
     "winston": "^2.1.1",
     "winston-request-logger": "^1.0.7"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^2.4.5",
+    "proxyquire": "^1.7.4",
+    "sinon": "^1.17.3",
+    "sinon-as-promised": "^4.0.0"
   }
 }

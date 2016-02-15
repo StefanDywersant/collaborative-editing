@@ -1,15 +1,17 @@
 # CKSource assignment
 
+
 ## Assignment description
 
 Create a service/feature that allows synchronisation of checkbox statuses in a browser (“collaborative editing” of checkboxes).
 
-Key features
-The service should support multiple HTML forms on multiple websites to handle states of multiple different groups of checkboxes.
-The service should correctly handle a situation when user closes a browser and connects again.
-The service should reasonably handle lost internet connection and reconnecting.
-Usage of external libraries is allowed, but pay reasonable attention to performance.
-Sample use cases:
+**Key features**
+* The service should support multiple HTML forms on multiple websites to handle states of multiple different groups of checkboxes.
+* The service should correctly handle a situation when user closes a browser and connects again.
+* The service should reasonably handle lost internet connection and reconnecting.
+* Usage of external libraries is allowed, but pay reasonable attention to performance.
+
+### Sample use cases:
 
 A page provides an HTML form:
 
@@ -22,6 +24,7 @@ A page provides an HTML form:
  <label><input type="checkbox" name="second" value=”b”>b</label>
 ```
 
+
 ### Case 1: Server should keep the state of the checkboxes:
 * User A loads page.
 * User A checks answer “1”.
@@ -29,6 +32,7 @@ A page provides an HTML form:
 * User A closes page.
 * User B unchecks answer “1” and checks answer “2”.
 * User C loads page. Expected result: answer “2” should be checked.
+
 
 ### Case 2: Server should handle lost connection and possible conflicts caused by it:
 * User A loads page with all input elements unchecked.
@@ -48,12 +52,15 @@ Browser support: Chrome & Firefox
 * The application should be relatively efficient and scale well (feel free to use Amazon services or any other cloud solutions) or explain what eventually could be done to make the application scalable.
 Secure the communication between the client and server.
 
+
 ### Things that we’d love to see in a provided solution:
 * Well-thought architecture (e.g. to eventually easily support later radio inputs or ```<select multiple>```).
 * Clean code.
 * Tests (a few, to show that you know how to write correct tests).
 
+
 ## Solution description
+
 
 ### Features
 * scalable backend capable of running on multiple servers / datacenters
@@ -64,9 +71,11 @@ Secure the communication between the client and server.
 * frontend will synchronize with backend after connection loss
 * backend<->backend links will synchronize after split
 
+
 ### Drawbacks
 * all backends hold exact copy of all forms state - this might be improved by managing only needed state
 * websocket stability on poor links could be improved
+
 
 ### Installation
 
@@ -87,6 +96,7 @@ Each backend has its own configuration file which inherits options from *default
 
 **Note:** you can play with *logger.level* option in order to increase/decrese logging level.
 
+
 ### Execution
 
 In order to start all example backends you need to issue:
@@ -98,3 +108,12 @@ NODE_ENV=backend01 node app.js
 ```
 
 Now you can navigate to: http://localhost:8080, http://localhost:8081 and http://localhost:8082.
+
+
+### Tests
+
+You can run tests by invoking:
+
+```bash
+npm test
+```
