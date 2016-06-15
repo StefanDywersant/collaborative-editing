@@ -1,14 +1,14 @@
 {
-  "name": "cksource-assignment",
+  "name": "collaborative-editing",
   "version": "1.0.0",
-  "description": "Checkbox synchronization assignment from CKSource",
+  "description": "Checkbox synchronization assignment",
   "main": "app.js",
   "scripts": {
     "test": "mocha tests"
   },
   "repository": {
     "type": "git",
-    "url": "git@git.czystybeton.pl:/var/lib/git/cksource-assignment.git"
+    "url": "https://github.com/StefanDywersant/collaborative-editing.git"
   },
   "author": "StefanDywersant <karol.maciaszek@gmail.com> (https://github.com/StefanDywersant)",
   "license": "ISC",

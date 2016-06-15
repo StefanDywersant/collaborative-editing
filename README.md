@@ -1,4 +1,4 @@
-# CKSource assignment
+# Collaborative editing assignment
 
 
 ## Assignment description
